@@ -450,27 +450,26 @@ const Help = () => {
         topic.keywords.some(keyword => trimmed.includes(keyword)) || trimmed.includes(topic.title.toLowerCase())
       );
 
-      const needsStepByStep = /(wie|problem|fehler|hilfe|geht nicht|funktioniert nicht|klappt nicht|kann nicht|einrichten|installieren|verbinden|aktivieren|deaktivieren|ändern|öffnen|speichern|löschen)/i.test(trimmed);
+      let aiPrompt = `Nutzerfrage: "${text}"\n\nDu bist ein sehr guter, geduldiger Smartphone-Erklärer für Senioren. Antworte nur zur Nutzung eines Handys oder Smartphones. Antworte alltagsnah, präzise und wirklich hilfreich. Wenn es ein Problem ist, gib 3 bis 6 klare nummerierte Schritte. Wenn eine Angabe vom Gerät abhängt, sage kurz „je nach Handy kann es leicht anders heißen“. Wenn die Frage unklar ist, stelle eine kurze Rückfrage statt zu raten. Keine Hinweise zu Computer, PC oder Laptop.`;
 
-      if (matchingTopic) {
-        const directResponse = buildTopicResponse(matchingTopic, needsStepByStep);
-        addMessage(directResponse, 'assistant');
-        speakText(directResponse);
-      } else {
-        let aiPrompt = `Nutzerfrage: "${text}"\n\nAntworte ausschließlich zur Nutzung eines Smartphones oder Handys. Antworte kurz, konkret und leicht verständlich auf Deutsch. Wenn es ein Problem ist, gib 3 bis 5 nummerierte Schritte. Wenn die Frage unklar ist, stelle genau eine kurze Rückfrage statt zu raten. Keine Hinweise zu Computer, PC oder Laptop.`;
-
-        if (trimmed.includes('klappt nicht') || trimmed.includes('funktioniert nicht') || trimmed.includes('geht nicht')) {
-          const lastAssistantMessage = chat.filter(msg => msg.role === 'assistant').pop();
-          aiPrompt = `Die bisherige Hilfe war nicht passend. Gib bitte eine bessere, kurze Alternative auf Deutsch mit wenigen klaren nummerierten Schritten – nur für Handy oder Smartphone. ${lastAssistantMessage ? `Bisherige Antwort: "${lastAssistantMessage.content}".` : ''} Nutzerproblem: "${text}"`;
-        }
-
-        const response = await getGeminiResponse(aiPrompt);
-        addMessage(response, 'assistant');
-        speakText(response);
+      if (trimmed.includes('klappt nicht') || trimmed.includes('funktioniert nicht') || trimmed.includes('geht nicht')) {
+        const lastAssistantMessage = chat.filter(msg => msg.role === 'assistant').pop();
+        aiPrompt = `Die bisherige Hilfe war nicht gut genug. Gib jetzt eine bessere, präzisere Lösung auf Deutsch mit wenigen klaren nummerierten Schritten – nur für Handy oder Smartphone. ${lastAssistantMessage ? `Bisherige Antwort: "${lastAssistantMessage.content}".` : ''} Nutzerproblem: "${text}"`;
+      } else if (matchingTopic) {
+        aiPrompt = `Nutzerfrage: "${text}"\n\nBeantworte die Frage sehr gut, konkret und seniorengerecht – nur für Smartphone oder Handy. Nutze dieses Wissen als Orientierung, aber antworte natürlich und passend zur Frage: ${matchingTopic.steps.join(' ')} ${matchingTopic.alternative ? `Weitere mögliche Hilfen: ${matchingTopic.alternative.join(' ')}` : ''}`;
       }
+
+      const response = await getGeminiResponse(aiPrompt);
+      addMessage(response, 'assistant');
+      speakText(response);
     } catch (err) {
       console.error(err);
-      const fallbackResponse = 'Die KI konnte gerade nicht antworten. Bitte versuchen Sie es gleich noch einmal oder formulieren Sie die Frage etwas anders.';
+      const matchingTopic = helpTopics.find(topic =>
+        topic.keywords.some(keyword => trimmed.includes(keyword)) || trimmed.includes(topic.title.toLowerCase())
+      );
+      const fallbackResponse = matchingTopic
+        ? buildTopicResponse(matchingTopic, true)
+        : 'Die KI konnte gerade nicht gut antworten. Bitte versuchen Sie es gleich noch einmal oder stellen Sie die Frage etwas konkreter, zum Beispiel „Wie verbinde ich WLAN?“';
       addMessage(fallbackResponse, 'assistant');
       speakText(fallbackResponse);
     }
