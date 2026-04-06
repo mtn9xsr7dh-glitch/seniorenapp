@@ -16,6 +16,53 @@ const groq = browserApiKey
 const chatSystemPrompt = 'Du bist ein freundlicher KI-Assistent für Smartphone- und Handy-Nutzung. Antworte immer aus Sicht eines Handys oder Smartphones, niemals aus Sicht von Computer, PC oder Laptop. Antworte auf Deutsch kurz, konkret und direkt. Für normale Fragen antworte klar in wenigen Sätzen. Bei Problemen, Hilferufen oder "Wie geht das?"-Fragen gib eine einfache nummerierte Schritt-für-Schritt-Anleitung mit wenigen klaren Schritten. Keine langen Einleitungen und kein Abschweifen.';
 const storySystemPrompt = 'Du bist ein freundlicher Erzähler für Senioren. Schreibe warme, gut verständliche, positive und angenehm vorlesbare Geschichten auf Deutsch. Die Geschichten sollen ruhig, schön und leicht lesbar sein.';
 
+const offlineHelpResponses = [
+  {
+    keywords: ['wlan', 'wifi', 'internet'],
+    text: '1. Öffnen Sie die Einstellungen auf Ihrem Smartphone.\n2. Tippen Sie auf WLAN oder Internet.\n3. Wählen Sie Ihr Netzwerk aus.\n4. Geben Sie das Passwort ein und tippen Sie auf Verbinden.'
+  },
+  {
+    keywords: ['foto', 'kamera', 'bild'],
+    text: '1. Öffnen Sie die Kamera-App.\n2. Halten Sie das Handy ruhig auf das Motiv.\n3. Tippen Sie auf den runden Auslöser.\n4. Das Foto wird automatisch gespeichert.'
+  },
+  {
+    keywords: ['anruf', 'telefonieren', 'telefon'],
+    text: '1. Öffnen Sie die Telefon-App.\n2. Geben Sie eine Nummer ein oder wählen Sie einen Kontakt.\n3. Tippen Sie auf den grünen Hörer.\n4. Zum Beenden tippen Sie auf den roten Hörer.'
+  },
+  {
+    keywords: ['lautstärke', 'lauter', 'leiser', 'ton'],
+    text: '1. Drücken Sie die Lautstärketasten an der Seite des Handys.\n2. Nach oben bedeutet lauter, nach unten leiser.\n3. Prüfen Sie danach kurz den Ton.'
+  },
+  {
+    keywords: ['bluetooth', 'kopfhörer', 'lautsprecher'],
+    text: '1. Öffnen Sie die Einstellungen.\n2. Tippen Sie auf Bluetooth.\n3. Schalten Sie Bluetooth ein.\n4. Wählen Sie das gewünschte Gerät aus der Liste aus.'
+  },
+  {
+    keywords: ['akku', 'laden', 'aufladen'],
+    text: '1. Schließen Sie das Ladekabel an das Handy an.\n2. Stecken Sie das Netzteil in die Steckdose.\n3. Warten Sie, bis das Ladesymbol erscheint.\n4. Lassen Sie das Handy einige Zeit laden.'
+  }
+];
+
+function getOfflineHelpResponse(question: string): string {
+  const lowerQuestion = question.toLowerCase();
+  const matchedResponse = offlineHelpResponses.find((entry) =>
+    entry.keywords.some((keyword) => lowerQuestion.includes(keyword))
+  );
+
+  if (matchedResponse) {
+    return matchedResponse.text;
+  }
+
+  return '1. Öffnen Sie zuerst die passende App oder die Einstellungen auf Ihrem Smartphone.\n2. Prüfen Sie in Ruhe, welche Schaltfläche zu Ihrem Problem passt.\n3. Wenn etwas nicht klappt, schließen Sie die App und öffnen Sie sie erneut.\n4. Bei Bedarf starten Sie das Smartphone einmal neu.';
+}
+
+function getOfflineSteps(problem: string): string[] {
+  return getOfflineHelpResponse(problem)
+    .split('\n')
+    .map((line) => line.replace(/^\d+\.\s*/, '').trim())
+    .filter(Boolean);
+}
+
 async function callHostedAi<T>(payload: Record<string, unknown>): Promise<T | null> {
   try {
     const response = await fetch('/api/ai', {
@@ -45,7 +92,7 @@ export async function getGeminiResponse(question: string): Promise<string> {
   }
 
   if (!groq) {
-    return `Die KI-Hilfe ist gerade noch nicht vollständig verbunden. Sie können die anderen Bereiche der App aber schon nutzen.\n\nIhre Frage war: "${question}"`;
+    return getOfflineHelpResponse(question);
   }
 
   try {
@@ -126,11 +173,7 @@ Vermeide zusätzliche Erklärungen oder Einleitungen.`;
   }
 
   if (!groq) {
-    return [
-      'Die KI-Schrittanleitung ist gerade noch nicht verbunden.',
-      'Sie können die anderen Bereiche der App trotzdem normal nutzen.',
-      'Sobald der API-Schlüssel in Vercel gesetzt ist, funktioniert die KI wieder vollständig.'
-    ];
+    return getOfflineSteps(problem);
   }
 
   try {
