@@ -19,7 +19,7 @@ interface HomeStats {
 
 const taskLinks: Record<DailyTask['type'], string> = {
   games: '/games',
-  help: '/help',
+  help: '/tutorial',
   quiz: '/quiz',
   workout: '/workouts'
 };
@@ -108,14 +108,6 @@ const Home = () => {
       description: 'Erkennen Sie gefährliche Nachrichten und schützen Sie sich vor typischen Betrugsmaschen.',
       accent: '#e53935',
       background: 'linear-gradient(135deg, #fff4f5 0%, #ffe6ea 100%)'
-    },
-    {
-      to: '/help',
-      icon: '🤖',
-      title: 'Smartphone Hilfe',
-      description: 'Die KI erklärt technische Fragen kurz, konkret und leicht verständlich.',
-      accent: '#43a047',
-      background: 'linear-gradient(135deg, #f1fff5 0%, #e3f6e8 100%)'
     },
     {
       to: '/symbols',
@@ -356,7 +348,7 @@ const Home = () => {
       <div className="home-tip-box">
         <h3>💡 Tipp des Tages</h3>
         <p>
-          Starten Sie mit <strong>„Betrug vermeiden“</strong>, nutzen Sie danach die <strong>KI-Hilfe</strong> für Alltagsfragen und sammeln Sie Punkte mit Spielen und Workouts.
+          Starten Sie mit <strong>„Betrug vermeiden“</strong>, schauen Sie danach in die <strong>Anleitung</strong> und sammeln Sie Punkte mit Spielen und Workouts.
         </p>
       </div>
 

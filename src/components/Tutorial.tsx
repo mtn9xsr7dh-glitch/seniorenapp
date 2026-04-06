@@ -11,7 +11,7 @@ const steps = [
   {
     number: '2',
     title: 'Bereich antippen',
-    text: 'Tippen Sie einfach auf Hilfe, Quiz, Spiele, Fitness oder einen anderen gewünschten Bereich.'
+    text: 'Tippen Sie einfach auf Quiz, Spiele, Fitness oder einen anderen gewünschten Bereich.'
   },
   {
     number: '3',
@@ -70,8 +70,8 @@ const Tutorial: React.FC = () => {
           <Link to="/" style={{ textDecoration: 'none', backgroundColor: '#2196f3', color: '#fff', padding: '0.8rem 1rem', borderRadius: '12px', fontWeight: 700 }}>
             🏠 Zur Startseite
           </Link>
-          <Link to="/help" style={{ textDecoration: 'none', backgroundColor: '#fff', color: '#17456e', border: '1px solid #cfe0f3', padding: '0.8rem 1rem', borderRadius: '12px', fontWeight: 700 }}>
-            🤖 Hilfe ausprobieren
+          <Link to="/quiz" style={{ textDecoration: 'none', backgroundColor: '#fff', color: '#17456e', border: '1px solid #cfe0f3', padding: '0.8rem 1rem', borderRadius: '12px', fontWeight: 700 }}>
+            🎯 Quiz öffnen
           </Link>
         </div>
       </div>
@@ -124,7 +124,7 @@ const Tutorial: React.FC = () => {
       }}>
         <h2 style={{ color: '#12395b', marginBottom: '0.8rem' }}>🚀 Empfohlener Einstieg</h2>
         <ol style={{ color: '#52687b', lineHeight: '1.8', paddingLeft: '1.2rem', marginBottom: '1rem' }}>
-          <li>Zuerst <strong>Smartphone Hilfe</strong> öffnen</li>
+          <li>Zuerst <strong>Betrug vermeiden</strong> oder die <strong>Anleitung</strong> öffnen</li>
           <li>Danach ein <strong>Quiz</strong> oder <strong>Spiel</strong> ausprobieren</li>
           <li>Zum Schluss in <strong>Fitness</strong> oder <strong>Lesestube</strong> schauen</li>
         </ol>

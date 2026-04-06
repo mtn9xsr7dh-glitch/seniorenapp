@@ -1,8 +1,7 @@
 import { ReactNode, useEffect, useState } from 'react';
-import { BrowserRouter as Router, NavLink, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, NavLink, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './components/Home';
 import Scams from './components/Scams';
-import Help from './components/Help';
 import Symbols from './components/Symbols';
 import Quiz from './components/Quiz';
 import Games from './components/Games';
@@ -85,7 +84,7 @@ function SubscriptionGate({ children }: { children: ReactNode }) {
             <div style={{ color: '#607285', marginBottom: '1rem' }}>pro Monat</div>
             <ul style={{ color: '#4f6375', lineHeight: '1.7', paddingLeft: '1.2rem' }}>
               <li>7 Tage kostenlos</li>
-              <li>KI-Hilfe & Schritt-für-Schritt-Hilfe</li>
+              <li>Sicherheitswissen & leicht verständliche Inhalte</li>
               <li>Spiele, Workouts, Fortschritt & alle Bereiche</li>
             </ul>
             <button
@@ -131,7 +130,6 @@ function App() {
   const navigationItems = [
     { to: '/', label: 'Start', icon: '🏠' },
     { to: '/tutorial', label: 'Anleitung', icon: '🧭' },
-    { to: '/help', label: 'Hilfe', icon: '🤖' },
     { to: '/scams', label: 'Sicherheit', icon: '🛡️' },
     { to: '/quiz', label: 'Quiz', icon: '🎯' },
     { to: '/games', label: 'Spiele', icon: '🎮' },
@@ -174,7 +172,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/tutorial" element={<Tutorial />} />
             <Route path="/scams" element={withSubscription(<Scams />)} />
-            <Route path="/help" element={withSubscription(<Help />)} />
+            <Route path="/help" element={<Navigate to="/" replace />} />
             <Route path="/symbols" element={withSubscription(<Symbols />)} />
             <Route path="/quiz" element={withSubscription(<Quiz />)} />
             <Route path="/games" element={withSubscription(<Games />)} />
