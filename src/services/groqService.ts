@@ -1,17 +1,23 @@
 import Groq from 'groq-sdk';
 
-const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+const apiKey = import.meta.env.VITE_GROQ_API_KEY?.trim();
 
 if (!apiKey) {
-  console.error('Groq API Key nicht gefunden!');
+  console.warn('Groq API Key nicht gefunden – KI-Funktionen laufen im Fallback-Modus.');
 }
 
-const groq = new Groq({
-  apiKey: apiKey,
-  dangerouslyAllowBrowser: true // Nur für Demo-Zwecke!
-});
+const groq = apiKey
+  ? new Groq({
+      apiKey,
+      dangerouslyAllowBrowser: true // Nur für Demo-Zwecke!
+    })
+  : null;
 
 export async function getGeminiResponse(question: string): Promise<string> {
+  if (!groq) {
+    return `Die KI-Hilfe ist gerade noch nicht vollständig verbunden. Sie können die anderen Bereiche der App aber schon nutzen.\n\nIhre Frage war: "${question}"`;
+  }
+
   try {
     const chatCompletion = await groq.chat.completions.create({
       messages: [
@@ -33,6 +39,10 @@ export async function getGeminiResponse(question: string): Promise<string> {
 }
 
 export async function getStoryResponse(category: string): Promise<string> {
+  if (!groq) {
+    return `Kleine Geschichte: ${category}\n\nAn einem ruhigen Morgen öffnete sich das Fenster, und die Sonne schien freundlich in den Tag. Es war einer dieser Augenblicke, in denen alles etwas leichter wirkte. Mit einer Tasse Tee in der Hand wurde aus einem gewöhnlichen Moment ein schöner kleiner Anfang.\n\nSo darf auch ein einfacher Tag etwas Gutes bereithalten – ein freundliches Wort, ein stiller Augenblick oder eine schöne Erinnerung.`;
+  }
+
   try {
     const chatCompletion = await groq.chat.completions.create({
       messages: [
@@ -74,6 +84,14 @@ Antworte NUR mit den Schritten, nummeriert wie folgt:
 usw.
 
 Vermeide zusätzliche Erklärungen oder Einleitungen.`;
+
+  if (!groq) {
+    return [
+      'Die KI-Schrittanleitung ist gerade noch nicht verbunden.',
+      'Sie können die anderen Bereiche der App trotzdem normal nutzen.',
+      'Sobald der API-Schlüssel in Vercel gesetzt ist, funktioniert die KI wieder vollständig.'
+    ];
+  }
 
   try {
     console.log('Calling Groq API with prompt:', prompt.substring(0, 100) + '...');
