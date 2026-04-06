@@ -1,20 +1,7 @@
-import Groq from 'groq-sdk';
-
-const browserApiKey = import.meta.env.VITE_GROQ_API_KEY?.trim();
-
-if (!browserApiKey) {
-  console.warn('Kein Browser-Groq-Key gesetzt – die App nutzt bevorzugt die sichere Vercel-API.');
-}
-
-const groq = browserApiKey
-  ? new Groq({
-      apiKey: browserApiKey,
-      dangerouslyAllowBrowser: true
-    })
-  : null;
-
-const chatSystemPrompt = 'Du bist ein sehr guter, hilfreicher KI-Assistent für ältere Menschen. Beantworte Fragen offen, freundlich, natürlich und verständlich auf Deutsch. Wenn es um Technik geht, erkläre es einfach und praktisch. Wenn es ein Problem ist, darfst du auch Schritt für Schritt helfen. Antworte nicht unnötig kurz und nicht zu starr.';
-const storySystemPrompt = 'Du bist ein freundlicher Erzähler für Senioren. Schreibe warme, gut verständliche, positive und angenehm vorlesbare Geschichten auf Deutsch. Die Geschichten sollen ruhig, schön und leicht lesbar sein.';
+type AiChatMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};
 
 const offlineHelpResponses = [
   {
@@ -85,34 +72,13 @@ async function callHostedAi<T>(payload: Record<string, unknown>): Promise<T | nu
   }
 }
 
-export async function getGeminiResponse(question: string): Promise<string> {
-  const hosted = await callHostedAi<{ text?: string }>({ type: 'chat', question });
+export async function getGeminiResponse(question: string, history: AiChatMessage[] = []): Promise<string> {
+  const hosted = await callHostedAi<{ text?: string }>({ type: 'chat', question, history });
   if (hosted?.text) {
     return hosted.text;
   }
 
-  if (!groq) {
-    return getOfflineHelpResponse(question);
-  }
-
-  try {
-    const chatCompletion = await groq.chat.completions.create({
-      messages: [
-        {
-          role: 'system',
-          content: chatSystemPrompt
-        },
-        { role: 'user', content: question }
-      ],
-      model: 'llama-3.1-8b-instant',
-      temperature: 0.3,
-      max_tokens: 420,
-    });
-    return chatCompletion.choices[0]?.message?.content || 'Keine Antwort erhalten';
-  } catch (error) {
-    console.error('Error calling Groq API:', error);
-    throw new Error('Fehler beim Abrufen der Antwort von der KI');
-  }
+  return getOfflineHelpResponse(question);
 }
 
 export async function getStoryResponse(category: string): Promise<string> {
@@ -121,81 +87,14 @@ export async function getStoryResponse(category: string): Promise<string> {
     return hosted.text;
   }
 
-  if (!groq) {
-    return `Kleine Geschichte: ${category}\n\nAn einem ruhigen Morgen öffnete sich das Fenster, und die Sonne schien freundlich in den Tag. Es war einer dieser Augenblicke, in denen alles etwas leichter wirkte. Mit einer Tasse Tee in der Hand wurde aus einem gewöhnlichen Moment ein schöner kleiner Anfang.\n\nSo darf auch ein einfacher Tag etwas Gutes bereithalten – ein freundliches Wort, ein stiller Augenblick oder eine schöne Erinnerung.`;
-  }
-
-  try {
-    const chatCompletion = await groq.chat.completions.create({
-      messages: [
-        {
-          role: 'system',
-          content: storySystemPrompt
-        },
-        {
-          role: 'user',
-          content: `Schreibe eine neue, schöne Geschichte für die Kategorie "${category}". Sie soll positiv, leicht verständlich und angenehm zu lesen sein. Länge: ungefähr 4 bis 8 kurze Absätze. Gib nur die Geschichte mit einem kurzen Titel aus.`
-        }
-      ],
-      model: 'llama-3.1-8b-instant',
-      temperature: 0.8,
-      max_tokens: 900,
-    });
-
-    return chatCompletion.choices[0]?.message?.content || 'Keine Geschichte erhalten';
-  } catch (error) {
-    console.error('Error calling Groq API for story generation:', error);
-    throw new Error('Fehler beim Erstellen der Geschichte');
-  }
+  return `Kleine Geschichte: ${category}\n\nAn einem ruhigen Morgen öffnete sich das Fenster, und die Sonne schien freundlich in den Tag. Es war einer dieser Augenblicke, in denen alles etwas leichter wirkte. Mit einer Tasse Tee in der Hand wurde aus einem gewöhnlichen Moment ein schöner kleiner Anfang.\n\nSo darf auch ein einfacher Tag etwas Gutes bereithalten – ein freundliches Wort, ein stiller Augenblick oder eine schöne Erinnerung.`;
 }
 
 export async function getGeminiSteps(problem: string): Promise<string[]> {
-  const prompt = `Du bist ein hilfreicher Assistent für ältere Menschen, die Hilfe mit ihrem Smartphone brauchen.
-
-Die Person möchte folgendes Problem lösen:
-"${problem}"
-
-Gib eine klare, einfache Schritt-für-Schritt-Anleitung in deutscher Sprache. Jeder Schritt sollte:
-- Kurz und verständlich sein
-- Mit einfachen Worten geschrieben sein
-- Genau erklären, was zu tun ist
-
-Antworte NUR mit den Schritten, nummeriert wie folgt:
-1. [Schritt 1]
-2. [Schritt 2]
-usw.
-
-Vermeide zusätzliche Erklärungen oder Einleitungen.`;
-
   const hosted = await callHostedAi<{ steps?: string[] }>({ type: 'steps', problem });
   if (hosted?.steps?.length) {
     return hosted.steps;
   }
 
-  if (!groq) {
-    return getOfflineSteps(problem);
-  }
-
-  try {
-    const chatCompletion = await groq.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }],
-      model: 'llama-3.1-8b-instant',
-    });
-
-    const text = chatCompletion.choices[0]?.message?.content || '';
-
-    const steps = text
-      .split('\n')
-      .filter(line => line.trim())
-      .map(line => line.replace(/^\d+\.\s*/, '').trim())
-      .filter(line => line.length > 0);
-
-    return steps.length > 0 ? steps : ['Fehler bei der Verarbeitung der Antwort'];
-  } catch (error) {
-    console.error('Error calling Groq API:', error);
-    if (error instanceof Error) {
-      throw new Error(`API-Fehler: ${error.message}`);
-    }
-    throw new Error('Fehler beim Abrufen der Anleitung von der KI');
-  }
+  return getOfflineSteps(problem);
 }

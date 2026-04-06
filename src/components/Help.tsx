@@ -326,8 +326,7 @@ const Help = () => {
     {
       id: 0,
       role: 'system',
-      content:
-        'Du bist ein freundlicher KI-Assistent für Handy- und Smartphone-Nutzung. Antworte immer bezogen auf das Smartphone, nicht auf Computer oder Laptop. Antworte auf Deutsch möglichst kurz, konkret und verständlich. Schweife nicht ab. Wenn nötig, erkläre es in wenigen klaren Schritten.',
+      content: 'Sie sind mit der KI-Hilfe verbunden. Stellen Sie einfach Ihre Frage auf Deutsch.',
     },
   ]);
   const [loading, setLoading] = useState(false);
@@ -432,7 +431,15 @@ const Help = () => {
     setInput('');
 
     try {
-      const response = await getGeminiResponse(text);
+      const history = chat
+        .filter(
+          (message): message is ChatMessage & { role: 'user' | 'assistant' } =>
+            message.role === 'user' || message.role === 'assistant'
+        )
+        .slice(-6)
+        .map(({ role, content }) => ({ role, content }));
+
+      const response = await getGeminiResponse(text, history);
       addMessage(response, 'assistant');
       speakText(response);
     } catch (err) {

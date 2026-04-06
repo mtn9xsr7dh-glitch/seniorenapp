@@ -1,8 +1,24 @@
 import Groq from 'groq-sdk';
 
-const chatSystemPrompt = 'Du bist ein sehr guter, hilfreicher KI-Assistent für ältere Menschen. Beantworte Fragen offen, freundlich, natürlich und verständlich auf Deutsch. Wenn es um Technik geht, erkläre es einfach und praktisch. Wenn es ein Problem ist, darfst du auch Schritt für Schritt helfen. Antworte nicht unnötig kurz und nicht zu starr.';
+const chatSystemPrompt = 'Du bist ein hilfreicher KI-Assistent. Antworte auf Deutsch natürlich, frei, klar und direkt. Erkläre Dinge so ausführlich wie sinnvoll. Wenn jemand ein Problem lösen will, darfst du gerne eine verständliche Schritt-für-Schritt-Lösung geben.';
 
 const storySystemPrompt = 'Du bist ein freundlicher Erzähler für Senioren. Schreibe warme, gut verständliche, positive und angenehm vorlesbare Geschichten auf Deutsch. Die Geschichten sollen ruhig, schön und leicht lesbar sein.';
+
+function normalizeHistory(history) {
+  if (!Array.isArray(history)) {
+    return [];
+  }
+
+  return history
+    .filter(
+      (entry) =>
+        entry &&
+        (entry.role === 'user' || entry.role === 'assistant') &&
+        typeof entry.content === 'string'
+    )
+    .slice(-8)
+    .map((entry) => ({ role: entry.role, content: entry.content }));
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -17,18 +33,20 @@ export default async function handler(req, res) {
 
   const groq = new Groq({ apiKey });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-  const { type, question, category, problem } = body;
+  const { type, question, category, problem, history } = body;
+  const safeHistory = normalizeHistory(history);
 
   try {
     if (type === 'chat') {
       const chatCompletion = await groq.chat.completions.create({
         messages: [
           { role: 'system', content: chatSystemPrompt },
+          ...safeHistory,
           { role: 'user', content: question || '' }
         ],
         model: 'llama-3.1-8b-instant',
-        temperature: 0.3,
-        max_tokens: 420,
+        temperature: 0.7,
+        max_tokens: 700,
       });
 
       return res.status(200).json({
