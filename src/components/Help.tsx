@@ -422,20 +422,6 @@ const Help = () => {
     speakGermanText(text, { rate: 0.91, pitch: 0.98, volume: 1 });
   };
 
-  const buildTopicResponse = (topic: HelpTopic, exact: boolean) => {
-    const title = `📱 ${topic.title}`;
-    const steps = topic.steps.join('\n');
-    const alternatives = topic.alternative?.length
-      ? `\n\nFalls es noch nicht klappt:\n${topic.alternative.join('\n')}`
-      : '';
-
-    if (exact) {
-      return `${title}\n\n${steps}${alternatives}`;
-    }
-
-    return `${title}\n\n${topic.steps.slice(0, 4).join('\n')}${alternatives}`;
-  };
-
   const sendPrompt = async (text: string) => {
     const trimmed = text.trim().toLowerCase();
     if (!trimmed) return;
@@ -446,30 +432,12 @@ const Help = () => {
     setInput('');
 
     try {
-      const matchingTopic = helpTopics.find(topic =>
-        topic.keywords.some(keyword => trimmed.includes(keyword)) || trimmed.includes(topic.title.toLowerCase())
-      );
-
-      let aiPrompt = `Nutzerfrage: "${text}"\n\nDu bist ein sehr guter, geduldiger Smartphone-Erklärer für Senioren. Antworte nur zur Nutzung eines Handys oder Smartphones. Antworte alltagsnah, präzise und wirklich hilfreich. Wenn es ein Problem ist, gib 3 bis 6 klare nummerierte Schritte. Wenn eine Angabe vom Gerät abhängt, sage kurz „je nach Handy kann es leicht anders heißen“. Wenn die Frage unklar ist, stelle eine kurze Rückfrage statt zu raten. Keine Hinweise zu Computer, PC oder Laptop.`;
-
-      if (trimmed.includes('klappt nicht') || trimmed.includes('funktioniert nicht') || trimmed.includes('geht nicht')) {
-        const lastAssistantMessage = chat.filter(msg => msg.role === 'assistant').pop();
-        aiPrompt = `Die bisherige Hilfe war nicht gut genug. Gib jetzt eine bessere, präzisere Lösung auf Deutsch mit wenigen klaren nummerierten Schritten – nur für Handy oder Smartphone. ${lastAssistantMessage ? `Bisherige Antwort: "${lastAssistantMessage.content}".` : ''} Nutzerproblem: "${text}"`;
-      } else if (matchingTopic) {
-        aiPrompt = `Nutzerfrage: "${text}"\n\nBeantworte die Frage sehr gut, konkret und seniorengerecht – nur für Smartphone oder Handy. Nutze dieses Wissen als Orientierung, aber antworte natürlich und passend zur Frage: ${matchingTopic.steps.join(' ')} ${matchingTopic.alternative ? `Weitere mögliche Hilfen: ${matchingTopic.alternative.join(' ')}` : ''}`;
-      }
-
-      const response = await getGeminiResponse(aiPrompt);
+      const response = await getGeminiResponse(text);
       addMessage(response, 'assistant');
       speakText(response);
     } catch (err) {
       console.error(err);
-      const matchingTopic = helpTopics.find(topic =>
-        topic.keywords.some(keyword => trimmed.includes(keyword)) || trimmed.includes(topic.title.toLowerCase())
-      );
-      const fallbackResponse = matchingTopic
-        ? buildTopicResponse(matchingTopic, true)
-        : 'Die KI konnte gerade nicht gut antworten. Bitte versuchen Sie es gleich noch einmal oder stellen Sie die Frage etwas konkreter, zum Beispiel „Wie verbinde ich WLAN?“';
+      const fallbackResponse = 'Die KI konnte gerade nicht antworten. Bitte versuchen Sie es gleich noch einmal.';
       addMessage(fallbackResponse, 'assistant');
       speakText(fallbackResponse);
     }

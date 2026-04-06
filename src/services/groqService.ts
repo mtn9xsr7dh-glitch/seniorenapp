@@ -13,7 +13,7 @@ const groq = browserApiKey
     })
   : null;
 
-const chatSystemPrompt = 'Du bist ein sehr guter digitaler Erklärer für Senioren bei Fragen zur Smartphone- und Handy-Nutzung. Antworte immer nur aus Sicht eines Handys oder Smartphones, niemals aus Sicht von Computer, PC oder Laptop. Antworte auf Deutsch klar, konkret, freundlich und praxisnah. Bei Problemen gib 3 bis 6 kurze nummerierte Schritte. Wenn Menünamen je nach Gerät variieren können, sage das kurz dazu. Wenn etwas unklar ist, stelle genau eine kurze Rückfrage statt zu raten. Keine langen Einleitungen, keine Halluzinationen und keine unnötigen Zusatzinfos.';
+const chatSystemPrompt = 'Du bist ein sehr guter, hilfreicher KI-Assistent für ältere Menschen. Beantworte Fragen offen, freundlich, natürlich und verständlich auf Deutsch. Wenn es um Technik geht, erkläre es einfach und praktisch. Wenn es ein Problem ist, darfst du auch Schritt für Schritt helfen. Antworte nicht unnötig kurz und nicht zu starr.';
 const storySystemPrompt = 'Du bist ein freundlicher Erzähler für Senioren. Schreibe warme, gut verständliche, positive und angenehm vorlesbare Geschichten auf Deutsch. Die Geschichten sollen ruhig, schön und leicht lesbar sein.';
 
 const offlineHelpResponses = [
