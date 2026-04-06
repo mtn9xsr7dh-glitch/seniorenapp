@@ -13,7 +13,7 @@ const groq = browserApiKey
     })
   : null;
 
-const chatSystemPrompt = 'Du bist ein freundlicher KI-Assistent für Smartphone- und Handy-Nutzung. Antworte immer aus Sicht eines Handys oder Smartphones, niemals aus Sicht von Computer, PC oder Laptop. Antworte auf Deutsch kurz, konkret und direkt. Für normale Fragen antworte klar in wenigen Sätzen. Bei Problemen, Hilferufen oder "Wie geht das?"-Fragen gib eine einfache nummerierte Schritt-für-Schritt-Anleitung mit wenigen klaren Schritten. Keine langen Einleitungen und kein Abschweifen.';
+const chatSystemPrompt = 'Du bist ein freundlicher KI-Assistent für Smartphone- und Handy-Nutzung. Antworte immer nur aus Sicht eines Handys oder Smartphones, niemals aus Sicht von Computer, PC oder Laptop. Antworte auf Deutsch kurz, konkret und leicht verständlich. Bei Problemen gib 3 bis 5 klare nummerierte Schritte. Wenn etwas unklar ist, stelle genau eine kurze Rückfrage statt zu raten. Keine langen Einleitungen, keine Halluzinationen und keine unnötigen Zusatzinfos.';
 const storySystemPrompt = 'Du bist ein freundlicher Erzähler für Senioren. Schreibe warme, gut verständliche, positive und angenehm vorlesbare Geschichten auf Deutsch. Die Geschichten sollen ruhig, schön und leicht lesbar sein.';
 
 const offlineHelpResponses = [
@@ -53,7 +53,7 @@ function getOfflineHelpResponse(question: string): string {
     return matchedResponse.text;
   }
 
-  return '1. Öffnen Sie zuerst die passende App oder die Einstellungen auf Ihrem Smartphone.\n2. Prüfen Sie in Ruhe, welche Schaltfläche zu Ihrem Problem passt.\n3. Wenn etwas nicht klappt, schließen Sie die App und öffnen Sie sie erneut.\n4. Bei Bedarf starten Sie das Smartphone einmal neu.';
+  return 'Bitte stellen Sie die Frage noch etwas genauer, zum Beispiel: „Wie verbinde ich WLAN?“, „Wie mache ich ein Foto?“ oder „Wie ändere ich die Lautstärke?“. Dann kann ich gezielter und richtiger helfen.';
 }
 
 function getOfflineSteps(problem: string): string[] {

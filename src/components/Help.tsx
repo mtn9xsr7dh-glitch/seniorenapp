@@ -422,6 +422,20 @@ const Help = () => {
     speakGermanText(text, { rate: 0.91, pitch: 0.98, volume: 1 });
   };
 
+  const buildTopicResponse = (topic: HelpTopic, exact: boolean) => {
+    const title = `📱 ${topic.title}`;
+    const steps = topic.steps.join('\n');
+    const alternatives = topic.alternative?.length
+      ? `\n\nFalls es noch nicht klappt:\n${topic.alternative.join('\n')}`
+      : '';
+
+    if (exact) {
+      return `${title}\n\n${steps}${alternatives}`;
+    }
+
+    return `${title}\n\n${topic.steps.slice(0, 4).join('\n')}${alternatives}`;
+  };
+
   const sendPrompt = async (text: string) => {
     const trimmed = text.trim().toLowerCase();
     if (!trimmed) return;
@@ -438,22 +452,22 @@ const Help = () => {
 
       const needsStepByStep = /(wie|problem|fehler|hilfe|geht nicht|funktioniert nicht|klappt nicht|kann nicht|einrichten|installieren|verbinden|aktivieren|deaktivieren|ändern|öffnen|speichern|löschen)/i.test(trimmed);
 
-      let aiPrompt = needsStepByStep
-        ? `Bitte beantworte die folgende Frage ausschließlich bezogen auf Handy- oder Smartphone-Nutzung auf Deutsch mit einer kurzen, konkreten Schritt-für-Schritt-Anleitung. Verwende 3 bis 6 nummerierte Schritte. Keine Hinweise zu Computer, PC oder Laptop. Frage: "${text}"`
-        : `Bitte beantworte die folgende Frage ausschließlich bezogen auf Handy- oder Smartphone-Nutzung kurz, konkret und verständlich auf Deutsch. Keine Hinweise zu Computer, PC oder Laptop. Frage: "${text}"`;
+      if (matchingTopic) {
+        const directResponse = buildTopicResponse(matchingTopic, needsStepByStep);
+        addMessage(directResponse, 'assistant');
+        speakText(directResponse);
+      } else {
+        let aiPrompt = `Nutzerfrage: "${text}"\n\nAntworte ausschließlich zur Nutzung eines Smartphones oder Handys. Antworte kurz, konkret und leicht verständlich auf Deutsch. Wenn es ein Problem ist, gib 3 bis 5 nummerierte Schritte. Wenn die Frage unklar ist, stelle genau eine kurze Rückfrage statt zu raten. Keine Hinweise zu Computer, PC oder Laptop.`;
 
-      if (trimmed.includes('klappt nicht') || trimmed.includes('funktioniert nicht') || trimmed.includes('geht nicht')) {
-        const lastAssistantMessage = chat.filter(msg => msg.role === 'assistant').pop();
-        aiPrompt = `Die bisherige Hilfe hat nicht funktioniert. Gib bitte eine kurze, konkrete alternative Lösung auf Deutsch mit wenigen nummerierten Schritten – nur für Handy oder Smartphone, nicht für Computer oder Laptop. ${lastAssistantMessage ? `Bisherige Antwort: "${lastAssistantMessage.content}".` : ''} Nutzerproblem: "${text}"`;
-      } else if (matchingTopic) {
-        aiPrompt = needsStepByStep
-          ? `Beantworte die Nutzerfrage kurz, konkret und auf Deutsch mit einer klaren nummerierten Schritt-für-Schritt-Anleitung – nur für Handy oder Smartphone. Nutze bei Bedarf diese Orientierung zum Thema "${matchingTopic.title}": ${matchingTopic.steps.join(' ')} ${matchingTopic.alternative ? `Zusätzliche Hilfen: ${matchingTopic.alternative.join(' ')}` : ''} Nutzerfrage: "${text}"`
-          : `Beantworte die Nutzerfrage kurz, konkret und verständlich auf Deutsch – nur aus Sicht von Handy oder Smartphone. Falls hilfreich, nenne nur die wichtigsten Punkte. Orientierung zum Thema "${matchingTopic.title}": ${matchingTopic.steps.join(' ')} Nutzerfrage: "${text}"`;
+        if (trimmed.includes('klappt nicht') || trimmed.includes('funktioniert nicht') || trimmed.includes('geht nicht')) {
+          const lastAssistantMessage = chat.filter(msg => msg.role === 'assistant').pop();
+          aiPrompt = `Die bisherige Hilfe war nicht passend. Gib bitte eine bessere, kurze Alternative auf Deutsch mit wenigen klaren nummerierten Schritten – nur für Handy oder Smartphone. ${lastAssistantMessage ? `Bisherige Antwort: "${lastAssistantMessage.content}".` : ''} Nutzerproblem: "${text}"`;
+        }
+
+        const response = await getGeminiResponse(aiPrompt);
+        addMessage(response, 'assistant');
+        speakText(response);
       }
-
-      const response = await getGeminiResponse(aiPrompt);
-      addMessage(response, 'assistant');
-      speakText(response);
     } catch (err) {
       console.error(err);
       const fallbackResponse = 'Die KI konnte gerade nicht antworten. Bitte versuchen Sie es gleich noch einmal oder formulieren Sie die Frage etwas anders.';
