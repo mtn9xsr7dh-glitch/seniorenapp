@@ -1,8 +1,7 @@
 ﻿import { FormEvent, useEffect, useState } from 'react';
-import { getGeminiResponse } from '../services/groqService';
+import { getGeminiResponse } from '../services/geminiService';
 import { addHelpQuestionPoints } from '../utils/progressUtils';
 import { speakGermanText } from '../utils/speechUtils';
-import Mascot from './Mascot';
 
 interface ChatMessage {
   id: number;
@@ -17,14 +16,6 @@ interface HelpTopic {
   alternative?: string[];
 }
 
-interface SubscriptionState {
-  isActive: boolean;
-  plan: 'monthly' | 'yearly' | null;
-  startedAt?: string;
-  trialEndsAt?: string;
-}
-
-const SUBSCRIPTION_KEY = 'rentnerApp_subscription';
 
 const helpTopics: HelpTopic[] = [
   {
@@ -334,22 +325,8 @@ const Help = () => {
   const [recording, setRecording] = useState(false);
   const [recognition, setRecognition] = useState<any>(null);
   const [messageId, setMessageId] = useState(1);
-  const [subscription, setSubscription] = useState<SubscriptionState>({
-    isActive: false,
-    plan: null,
-  });
 
   useEffect(() => {
-    const savedSubscription = localStorage.getItem(SUBSCRIPTION_KEY);
-    if (savedSubscription) {
-      try {
-        const parsedSubscription = JSON.parse(savedSubscription) as SubscriptionState;
-        setSubscription(parsedSubscription);
-      } catch (err) {
-        console.error('Abo-Status konnte nicht geladen werden', err);
-      }
-    }
-
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) return;
 
@@ -384,38 +361,6 @@ const Help = () => {
     setMessageId(prev => prev + 1);
   };
 
-  const activateSubscription = (plan: 'monthly' | 'yearly') => {
-    const startedAt = new Date();
-    const trialEndsAt = new Date();
-    trialEndsAt.setDate(trialEndsAt.getDate() + 7);
-
-    const nextSubscription: SubscriptionState = {
-      isActive: true,
-      plan,
-      startedAt: startedAt.toISOString(),
-      trialEndsAt: trialEndsAt.toISOString(),
-    };
-
-    setSubscription(nextSubscription);
-    localStorage.setItem(SUBSCRIPTION_KEY, JSON.stringify(nextSubscription));
-  };
-
-  const resetSubscriptionDemo = () => {
-    const defaultSubscription = { isActive: false, plan: null } as SubscriptionState;
-    setSubscription(defaultSubscription);
-    localStorage.removeItem(SUBSCRIPTION_KEY);
-  };
-
-  const getPlanLabel = () => {
-    if (subscription.plan === 'yearly') return 'Jahresabo · 4,99 € / Monat';
-    if (subscription.plan === 'monthly') return 'Monatsabo · 7,99 € / Monat';
-    return 'Kein Abo aktiv';
-  };
-
-  const formatTrialDate = () => {
-    if (!subscription.trialEndsAt) return '';
-    return new Date(subscription.trialEndsAt).toLocaleDateString('de-DE');
-  };
 
   const speakText = (text: string) => {
     speakGermanText(text, { rate: 0.91, pitch: 0.98, volume: 1 });
@@ -478,88 +423,6 @@ const Help = () => {
     }
   };
 
-  if (!subscription.isActive) {
-    return (
-      <div style={{ padding: '2rem', maxWidth: '920px', margin: '0 auto', fontFamily: 'Arial, sans-serif' }}>
-        <div style={{
-          background: 'linear-gradient(135deg, #ffffff 0%, #eef7ff 100%)',
-          borderRadius: '24px',
-          padding: '2rem',
-          border: '1px solid #dbe8f6',
-          boxShadow: '0 18px 40px rgba(15, 48, 87, 0.08)'
-        }}>
-          <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-            <h1 style={{ fontSize: '2.5rem', marginBottom: '0.5rem', color: '#12395b' }}>💎 KI-Hilfe Premium</h1>
-            <p style={{ fontSize: '1.1rem', color: '#55697d', margin: 0 }}>
-              Für die Nutzung der KI-Hilfe ist ein Abo erforderlich – inklusive <strong>7 Tage kostenlos testen</strong>.
-            </p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-            <div style={{ backgroundColor: '#fff', border: '2px solid #2196f3', borderRadius: '18px', padding: '1.5rem' }}>
-              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1565c0', marginBottom: '0.5rem' }}>Monatsabo</div>
-              <div style={{ fontSize: '2rem', fontWeight: 800, color: '#12395b', marginBottom: '0.4rem' }}>7,99 €</div>
-              <div style={{ color: '#607285', marginBottom: '1rem' }}>pro Monat</div>
-              <ul style={{ color: '#4f6375', lineHeight: '1.7', paddingLeft: '1.2rem' }}>
-                <li>7 Tage kostenlos testen</li>
-                <li>volle KI-Hilfe</li>
-                <li>Schritt-für-Schritt-Anleitungen</li>
-              </ul>
-              <button
-                onClick={() => activateSubscription('monthly')}
-                style={{
-                  width: '100%',
-                  backgroundColor: '#2196f3',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '12px',
-                  padding: '0.9rem 1rem',
-                  fontSize: '1rem',
-                  cursor: 'pointer'
-                }}
-              >
-                7 Tage kostenlos starten
-              </button>
-            </div>
-
-            <div style={{ backgroundColor: '#fff', border: '2px solid #4caf50', borderRadius: '18px', padding: '1.5rem', position: 'relative' }}>
-              <div style={{ position: 'absolute', top: '-12px', right: '16px', backgroundColor: '#4caf50', color: 'white', padding: '0.3rem 0.7rem', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 700 }}>Beliebt</div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#2e7d32', marginBottom: '0.5rem' }}>12 Monate</div>
-              <div style={{ fontSize: '2rem', fontWeight: 800, color: '#12395b', marginBottom: '0.4rem' }}>4,99 €</div>
-              <div style={{ color: '#607285', marginBottom: '1rem' }}>pro Monat · jährliche Abrechnung</div>
-              <ul style={{ color: '#4f6375', lineHeight: '1.7', paddingLeft: '1.2rem' }}>
-                <li>7 Tage kostenlos testen</li>
-                <li>günstiger Langzeitpreis</li>
-                <li>volle KI-Hilfe inklusive</li>
-              </ul>
-              <button
-                onClick={() => activateSubscription('yearly')}
-                style={{
-                  width: '100%',
-                  backgroundColor: '#4caf50',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '12px',
-                  padding: '0.9rem 1rem',
-                  fontSize: '1rem',
-                  cursor: 'pointer'
-                }}
-              >
-                Jahresabo mit Testphase wählen
-              </button>
-            </div>
-          </div>
-
-          <p style={{ textAlign: 'center', color: '#74879a', fontSize: '0.95rem', marginBottom: 0 }}>
-            Demo-Hinweis: Dies ist aktuell eine lokale Abo-Sperre. Für echte Zahlungen bräuchte man später z. B. Stripe, Google Play oder Apple In-App-Käufe.
-          </p>
-        </div>
-
-        <Mascot context="help" size="small" />
-      </div>
-    );
-  }
-
   return (
     <div style={{ padding: '2rem', maxWidth: '840px', margin: '0 auto', fontFamily: 'Arial, sans-serif' }}>
       <div style={{
@@ -567,33 +430,15 @@ const Help = () => {
         border: '1px solid #cfe0f3',
         borderRadius: '14px',
         padding: '0.9rem 1rem',
-        marginBottom: '1rem',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: '1rem',
-        flexWrap: 'wrap'
+        marginBottom: '1rem'
       }}>
-        <div>
-          <strong style={{ color: '#12395b' }}>💎 {getPlanLabel()}</strong>
-          <div style={{ color: '#5f7488', fontSize: '0.92rem' }}>7 Tage kostenlos bis: {formatTrialDate()}</div>
+        <strong style={{ color: '#12395b' }}>✨ Gemini-KI ist aktiv</strong>
+        <div style={{ color: '#5f7488', fontSize: '0.92rem' }}>
+          Stellen Sie einfach eine Frage oder tippen Sie unten auf eine häufige Hilfe.
         </div>
-        <button
-          onClick={resetSubscriptionDemo}
-          style={{
-            backgroundColor: '#ffffff',
-            color: '#1565c0',
-            border: '1px solid #b7d3ee',
-            borderRadius: '10px',
-            padding: '0.55rem 0.9rem',
-            cursor: 'pointer'
-          }}
-        >
-          Demo-Abo zurücksetzen
-        </button>
       </div>
 
-      <h1 style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🆘 KI-Hilfe - direkt & Schritt für Schritt</h1>
+      <h1 style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🆘 KI-Hilfe mit Gemini</h1>
       <p style={{ fontSize: '1.1rem', color: '#555', marginBottom: '1.8rem' }}>
         Stellen Sie jede beliebige Frage. Die KI antwortet allgemein und konkret – und bei Fragen oder Problemen automatisch Schritt für Schritt.
       </p>
@@ -753,8 +598,6 @@ const Help = () => {
       <div style={{ marginTop: '2rem', borderTop: '1px solid #ddd', paddingTop: '1.5rem', textAlign: 'center' }}>
         <a href="/" style={{ color: '#4CAF50', textDecoration: 'none', fontWeight: 'bold' }}>← Zurück zur Startseite</a>
       </div>
-
-      <Mascot context="help" size="small" />
     </div>
   );
 };

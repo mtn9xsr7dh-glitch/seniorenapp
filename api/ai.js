@@ -1,7 +1,11 @@
-import Groq from 'groq-sdk';
+import dotenv from 'dotenv';
 
-const chatSystemPrompt = 'Du bist ein hilfreicher KI-Assistent. Antworte auf Deutsch natürlich, frei, klar und direkt. Erkläre Dinge so ausführlich wie sinnvoll. Wenn jemand ein Problem lösen will, darfst du gerne eine verständliche Schritt-für-Schritt-Lösung geben.';
+dotenv.config({ path: '.env.local' });
+dotenv.config();
 
+const modelName = 'gemini-2.0-flash';
+
+const chatSystemPrompt = 'Du bist ein hilfreicher KI-Assistent. Antworte auf Deutsch natürlich, freundlich, klar und direkt. Wenn jemand ein Problem lösen will, erkläre es verständlich und bei Bedarf Schritt für Schritt.';
 const storySystemPrompt = 'Du bist ein freundlicher Erzähler für Senioren. Schreibe warme, gut verständliche, positive und angenehm vorlesbare Geschichten auf Deutsch. Die Geschichten sollen ruhig, schön und leicht lesbar sein.';
 
 function normalizeHistory(history) {
@@ -14,10 +18,74 @@ function normalizeHistory(history) {
       (entry) =>
         entry &&
         (entry.role === 'user' || entry.role === 'assistant') &&
-        typeof entry.content === 'string'
+        typeof entry.content === 'string' &&
+        entry.content.trim()
     )
     .slice(-8)
-    .map((entry) => ({ role: entry.role, content: entry.content }));
+    .map((entry) => ({ role: entry.role, content: entry.content.trim() }));
+}
+
+function toGeminiContents(history, latestUserText = '') {
+  const contents = history.map((entry) => ({
+    role: entry.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: entry.content }]
+  }));
+
+  if (latestUserText.trim()) {
+    contents.push({
+      role: 'user',
+      parts: [{ text: latestUserText.trim() }]
+    });
+  }
+
+  return contents;
+}
+
+function extractText(data) {
+  const parts = data?.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) {
+    return '';
+  }
+
+  return parts
+    .map((part) => (typeof part?.text === 'string' ? part.text : ''))
+    .join('')
+    .trim();
+}
+
+async function callGemini({ systemInstruction, contents, temperature = 0.7, maxOutputTokens = 700 }) {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GEMINI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY not configured');
+  }
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: systemInstruction }]
+        },
+        contents,
+        generationConfig: {
+          temperature,
+          maxOutputTokens
+        }
+      })
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini request failed (${response.status}): ${errorText}`);
+  }
+
+  return await response.json();
 }
 
 export default async function handler(req, res) {
@@ -26,77 +94,52 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const apiKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'GROQ_API_KEY not configured' });
-  }
-
-  const groq = new Groq({ apiKey });
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
   const { type, question, category, problem, history } = body;
   const safeHistory = normalizeHistory(history);
 
   try {
     if (type === 'chat') {
-      const chatCompletion = await groq.chat.completions.create({
-        messages: [
-          { role: 'system', content: chatSystemPrompt },
-          ...safeHistory,
-          { role: 'user', content: question || '' }
-        ],
-        model: 'llama-3.1-8b-instant',
+      const data = await callGemini({
+        systemInstruction: chatSystemPrompt,
+        contents: toGeminiContents(safeHistory, question || ''),
         temperature: 0.7,
-        max_tokens: 700,
+        maxOutputTokens: 700
       });
 
       return res.status(200).json({
-        text: chatCompletion.choices[0]?.message?.content || 'Keine Antwort erhalten'
+        text: extractText(data) || 'Keine Antwort erhalten'
       });
     }
 
     if (type === 'story') {
-      const chatCompletion = await groq.chat.completions.create({
-        messages: [
-          { role: 'system', content: storySystemPrompt },
+      const data = await callGemini({
+        systemInstruction: storySystemPrompt,
+        contents: [
           {
             role: 'user',
-            content: `Schreibe eine neue, schöne Geschichte für die Kategorie "${category}". Sie soll positiv, leicht verständlich und angenehm zu lesen sein. Länge: ungefähr 4 bis 8 kurze Absätze. Gib nur die Geschichte mit einem kurzen Titel aus.`
+            parts: [{ text: `Schreibe eine neue, schöne Geschichte für die Kategorie "${category}". Sie soll positiv, leicht verständlich und angenehm zu lesen sein. Länge: ungefähr 4 bis 8 kurze Absätze. Gib nur die Geschichte mit einem kurzen Titel aus.` }]
           }
         ],
-        model: 'llama-3.1-8b-instant',
-        temperature: 0.8,
-        max_tokens: 900,
+        temperature: 0.85,
+        maxOutputTokens: 900
       });
 
       return res.status(200).json({
-        text: chatCompletion.choices[0]?.message?.content || 'Keine Geschichte erhalten'
+        text: extractText(data) || 'Keine Geschichte erhalten'
       });
     }
 
     if (type === 'steps') {
-      const prompt = `Du bist ein hilfreicher Assistent für ältere Menschen, die Hilfe mit ihrem Smartphone brauchen.
-
-Die Person möchte folgendes Problem lösen:
-"${problem}"
-
-Gib eine klare, einfache Schritt-für-Schritt-Anleitung in deutscher Sprache. Jeder Schritt sollte:
-- Kurz und verständlich sein
-- Mit einfachen Worten geschrieben sein
-- Genau erklären, was zu tun ist
-
-Antworte NUR mit den Schritten, nummeriert wie folgt:
-1. [Schritt 1]
-2. [Schritt 2]
-usw.
-
-Vermeide zusätzliche Erklärungen oder Einleitungen.`;
-
-      const chatCompletion = await groq.chat.completions.create({
-        messages: [{ role: 'user', content: prompt }],
-        model: 'llama-3.1-8b-instant',
+      const stepPrompt = `Erkläre das folgende Problem auf Deutsch in klaren, einfachen, nummerierten Schritten:\n\n${problem}`;
+      const data = await callGemini({
+        systemInstruction: 'Du erklärst technische Hilfe ruhig, freundlich und leicht verständlich. Antworte nur mit nummerierten Schritten.',
+        contents: [{ role: 'user', parts: [{ text: stepPrompt }] }],
+        temperature: 0.4,
+        maxOutputTokens: 500
       });
 
-      const text = chatCompletion.choices[0]?.message?.content || '';
+      const text = extractText(data);
       const steps = text
         .split('\n')
         .filter((line) => line.trim())
@@ -110,7 +153,7 @@ Vermeide zusätzliche Erklärungen oder Einleitungen.`;
 
     return res.status(400).json({ error: 'Unknown AI request type' });
   } catch (error) {
-    console.error('Groq API server error:', error);
+    console.error('Gemini API server error:', error);
     return res.status(500).json({ error: 'Fehler bei der KI-Anfrage' });
   }
 }

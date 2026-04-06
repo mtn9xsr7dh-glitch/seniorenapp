@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getStoryResponse } from '../services/groqService';
+import { getStoryResponse } from '../services/geminiService';
 import { speakGermanText } from '../utils/speechUtils';
 import Mascot from './Mascot';
 
